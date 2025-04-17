@@ -25,6 +25,8 @@
 #include <sys/sysmacros.h>
 #endif
 
+#include "vk_android.h"
+
 /* This is probably far to big but it reflects the max size used for messages
  * in OpenGLs KHR_debug.
  */
@@ -386,10 +388,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_ycbcr_image_arrays                = true,
       .AMD_buffer_marker                     = true,
       .AMD_texture_gather_bias_lod           = device->info.ver >= 20,
-#if DETECT_OS_ANDROID
-      .ANDROID_external_memory_android_hardware_buffer = true,
-      .ANDROID_native_buffer                 = true,
-#endif
       .GOOGLE_decorate_string                = true,
       .GOOGLE_hlsl_functionality1            = true,
       .GOOGLE_user_type                      = true,
@@ -401,6 +399,11 @@ get_device_extensions(const struct anv_physical_device *device,
       .VALVE_mutable_descriptor_type         = true,
       .KHR_shader_bfloat16                   = device->info.has_bfloat16,
    };
+
+   if (vk_android_get_ugralloc() != NULL) {
+      ext->ANDROID_external_memory_android_hardware_buffer = true,
+      ext->ANDROID_native_buffer = true;
+   }
 }
 
 static void
