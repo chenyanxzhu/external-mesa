@@ -99,6 +99,9 @@ bool vk_ahb_probe_format(VkFormat vk_format,
 struct AHardwareBuffer *vk_alloc_ahardware_buffer(
    const VkMemoryAllocateInfo *pAllocateInfo);
 
+bool vk_android_rp_attachment_has_external_format(
+   const VkAttachmentDescription2 *desc);
+
 VkResult vk_android_get_ahb_layout(
    struct AHardwareBuffer *ahardware_buffer,
    VkImageDrmFormatModifierExplicitCreateInfoEXT *out,
@@ -143,6 +146,13 @@ static inline struct AHardwareBuffer *
 vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo)
 {
    return NULL;
+}
+
+static bool
+vk_android_rp_attachment_has_external_format(
+   const VkAttachmentDescription2 *desc)
+{
+   return false;
 }
 
 static inline VkResult
