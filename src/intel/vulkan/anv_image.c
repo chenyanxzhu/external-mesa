@@ -1638,6 +1638,8 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
    /* In case of AHardwareBuffer import, we don't know the layout yet */
    if (image->vk.external_handle_types &
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+      /* AHB images with more than one layer are not supported */
+      assert(image->vk.array_layers == 1);
       image->from_ahb = true;
 #if DETECT_OS_ANDROID
       image->vk.ahb_format = anv_ahb_format_for_vk_format(image->vk.format);
