@@ -149,6 +149,9 @@ get_ahw_buffer_format_properties2(
          case DRM_FORMAT_NV12:
             p->externalFormat = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
             break;
+         case DRM_FORMAT_P010:
+            p->externalFormat = VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
+            break;
          default:
             break;
          }
