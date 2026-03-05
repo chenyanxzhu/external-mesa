@@ -2333,7 +2333,7 @@ anv_attachment_external_resolve(struct anv_cmd_buffer *cmd_buffer,
                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                                 att->resolve_layout,
                                 ISL_AUX_USAGE_NONE, src_format,
-                                false, &src_surf);
+                                &src_surf);
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
@@ -2345,7 +2345,7 @@ anv_attachment_external_resolve(struct anv_cmd_buffer *cmd_buffer,
                                    att->resolve_layout,
                                    ISL_AUX_USAGE_NONE,
                                    dst_iview->planes[i].isl.format,
-                                   false, &dst_surf);
+                                   &dst_surf);
 
       anv_cmd_buffer_mark_image_written(cmd_buffer, dst_image,
                                         aspect_mask, dst_surf.aux_usage,
