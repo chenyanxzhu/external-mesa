@@ -79,6 +79,7 @@ SPECIALIZED_PROPERTY_STRUCTS = [
 # but which might still be present (in Android for instance)
 ANDROID_PROPERTIES = [
     "VkPhysicalDevicePresentationPropertiesANDROID",
+    "VkPhysicalDeviceExternalFormatResolvePropertiesANDROID",
 ]
 
 @dataclass

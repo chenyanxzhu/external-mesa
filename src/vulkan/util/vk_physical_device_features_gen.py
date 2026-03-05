@@ -52,6 +52,13 @@ RENAMED_FEATURES = {
     ('DeviceGeneratedCommandsFeaturesNV', 'deviceGeneratedCommands'): 'deviceGeneratedCommandsNV',
 }
 
+# Feature structs that are platform-guarded in vk.xml but should still be
+# represented in Mesa's internal vk_features table when building for Android
+# (or Android-compatible trees).
+ANDROID_FEATURES = [
+    "VkPhysicalDeviceExternalFormatResolveFeaturesANDROID",
+]
+
 KNOWN_ALIASES = [
     (['Vulkan11Features', '16BitStorageFeatures'], ['storageBuffer16BitAccess', 'uniformAndStorageBuffer16BitAccess', 'storagePushConstant16', 'storageInputOutput16']),
     (['Vulkan11Features', 'MultiviewFeatures'], ['multiview', 'multiviewGeometryShader', 'multiviewTessellationShader']),
@@ -431,7 +438,9 @@ def get_feature_structs(doc, api, beta):
         reqs = required[_type.attrib['name']]
         # Skip extensions with a define for now
         guard = reqs.guard
-        if guard is not None and (guard != "VK_ENABLE_BETA_EXTENSIONS" or beta != "true"):
+        if (guard is not None and
+            (guard != "VK_ENABLE_BETA_EXTENSIONS" or beta != "true") and
+            _type.attrib['name'] not in ANDROID_FEATURES):
             continue
 
         # find Vulkan structure type

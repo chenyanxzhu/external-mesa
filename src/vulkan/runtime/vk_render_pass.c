@@ -1843,7 +1843,7 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
          const struct vk_render_pass_attachment *resolve_att =
             &pass->attachments[sp_att->resolve->attachment];
          if (resolve_att->has_external_format)
-            color_attachment->resolveMode = VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_BIT_ANDROID;
+            color_attachment->resolveMode = VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_ANDROID;
          else if (vk_format_is_int(res_att_state->image_view->format))
             color_attachment->resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
          else

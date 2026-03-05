@@ -6018,7 +6018,7 @@ void genX(CmdEndRendering)(
       for (uint32_t i = 0; i < gfx->color_att_count; i++) {
          const struct anv_attachment *att = &gfx->color_att[i];
          if (att->resolve_mode ==
-             VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_BIT_ANDROID)
+             VK_RESOLVE_MODE_EXTERNAL_FORMAT_DOWNSAMPLE_ANDROID)
             anv_attachment_external_resolve(cmd_buffer, att);
          else if (att->resolve_mode != VK_RESOLVE_MODE_NONE)
             anv_attachment_msaa_resolve(cmd_buffer, att, att->layout,
