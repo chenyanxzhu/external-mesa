@@ -4,6 +4,7 @@
 
 #include "anv_private.h"
 #include "anv_api_version.h"
+#include "vk_android.h"
 
 #include "util/driconf.h"
 
@@ -275,6 +276,8 @@ VkResult anv_CreateInstance(
 
    intel_driver_ds_init();
 
+   vk_android_init_ugralloc();
+
    *pInstance = anv_instance_to_handle(instance);
 
    return VK_SUCCESS;
@@ -293,6 +296,8 @@ void anv_DestroyInstance(
 
    driDestroyOptionCache(&instance->dri_options);
    driDestroyOptionInfo(&instance->available_dri_options);
+
+   vk_android_destroy_ugralloc();
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);

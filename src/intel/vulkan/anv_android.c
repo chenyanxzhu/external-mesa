@@ -28,6 +28,8 @@
 #include "vk_android.h"
 #include "vk_common_entrypoints.h"
 #include "vk_util.h"
+#include "util/u_gralloc/u_gralloc.h"
+#include "drm-uapi/drm_fourcc.h"
 
 #if ANDROID_API_LEVEL >= 26
 #include <vndk/hardware_buffer.h>
@@ -105,6 +107,92 @@ get_ahw_buffer_format_properties2(
    p->format = vk_format_from_android(desc.format, desc.usage);
    p->externalFormat = p->format;
 
+   /*
+    * 1. Initializes defaults first.
+    * 2. If u_gralloc is available:
+    *    Reads DRM fourcc and updates externalFormat for NV12/YVU420.
+    *    Reads color info and overrides:
+    *       suggestedYcbcrModel
+    *       suggestedYcbcrRange
+    *       suggestedXChromaOffset
+    *       suggestedYChromaOffset
+    * 3. Keeps defaults when gralloc data is unavailable.
+    */
+   p->samplerYcbcrConversionComponents.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+   p->samplerYcbcrConversionComponents.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+   p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601;
+   p->suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_NARROW;
+
+   p->suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+   p->suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+
+   struct u_gralloc *u_gralloc = vk_android_get_ugralloc();
+   if (u_gralloc != NULL) {
+      struct u_gralloc_buffer_handle gr_handle = {
+         .handle = AHardwareBuffer_getNativeHandle(buffer),
+         .pixel_stride = desc.stride,
+         .hal_format = desc.format,
+      };
+
+      struct u_gralloc_buffer_basic_info info;
+      if (u_gralloc_get_buffer_basic_info(u_gralloc, &gr_handle, &info) == 0) {
+         mesa_logd("[ANV_AHB_TRACE] gralloc basic info: drm_fourcc=%u modifier=0x%llx planes=%u",
+                   info.drm_fourcc, (unsigned long long)info.modifier, info.num_planes);
+
+         switch (info.drm_fourcc) {
+         case DRM_FORMAT_YVU420:
+            p->externalFormat = VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM;
+            break;
+         case DRM_FORMAT_NV12:
+            p->externalFormat = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+            break;
+         default:
+            break;
+         }
+
+         struct u_gralloc_buffer_color_info color_info;
+         if (u_gralloc_get_buffer_color_info(u_gralloc, &gr_handle, &color_info) == 0) {
+            mesa_logd("[ANV_AHB_TRACE] gralloc color info: yuv_color_space=%d sample_range=%d h_siting=%d v_siting=%d",
+                      color_info.yuv_color_space, color_info.sample_range,
+                      color_info.horizontal_siting, color_info.vertical_siting);
+
+            switch (color_info.yuv_color_space) {
+            case __DRI_YUV_COLOR_SPACE_ITU_REC601:
+               p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601;
+               break;
+            case __DRI_YUV_COLOR_SPACE_ITU_REC709:
+               p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709;
+               break;
+            case __DRI_YUV_COLOR_SPACE_ITU_REC2020:
+               p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020;
+               break;
+            default:
+               break;
+            }
+
+            p->suggestedYcbcrRange =
+               (color_info.sample_range == __DRI_YUV_NARROW_RANGE)
+               ? VK_SAMPLER_YCBCR_RANGE_ITU_NARROW
+               : VK_SAMPLER_YCBCR_RANGE_ITU_FULL;
+            p->suggestedXChromaOffset =
+               (color_info.horizontal_siting == __DRI_YUV_CHROMA_SITING_0_5)
+               ? VK_CHROMA_LOCATION_MIDPOINT
+               : VK_CHROMA_LOCATION_COSITED_EVEN;
+            p->suggestedYChromaOffset =
+               (color_info.vertical_siting == __DRI_YUV_CHROMA_SITING_0_5)
+               ? VK_CHROMA_LOCATION_MIDPOINT
+               : VK_CHROMA_LOCATION_COSITED_EVEN;
+         }
+      } else {
+         mesa_loge("[ANV_AHB_TRACE] gralloc basic info unavailable");
+      }
+   } else {
+      mesa_loge("[ANV_AHB_TRACE] u_gralloc is not initialized");
+   }
+
    const struct anv_format *anv_format =
       anv_get_format(device->physical, p->format);
 
@@ -135,24 +223,6 @@ get_ahw_buffer_format_properties2(
     */
    p->formatFeatures |=
       VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
-
-   /* "Implementations may not always be able to determine the color model,
-    *  numerical range, or chroma offsets of the image contents, so the values
-    *  in VkAndroidHardwareBufferFormatPropertiesANDROID are only suggestions.
-    *  Applications should treat these values as sensible defaults to use in
-    *  the absence of more reliable information obtained through some other
-    *  means."
-    */
-   p->samplerYcbcrConversionComponents.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-   p->samplerYcbcrConversionComponents.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-   p->samplerYcbcrConversionComponents.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-   p->samplerYcbcrConversionComponents.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-   p->suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601;
-   p->suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_NARROW;
-
-   p->suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
-   p->suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
 
    return VK_SUCCESS;
 }
